@@ -29,11 +29,12 @@ static struct job_t jobs[MAXJOBS]; /* The job list */
 
 /* Here are the functions that you will implement */
 void eval(char *cmdline);
-int builtin_cmd(char **argv);
-void do_bgfg(char **argv);
-void waitfg(pid_t pid);
+int builtin_cmd(char **argv);   // calls vvvv
+void do_bgfg(char **argv);      // calls vvvv
+void waitfg(pid_t pid);         // looping doing a waitpid, WNOHANG.  Use a nanosleep to wait a reasonable
+                                // amount of time.
 
-void sigchld_handler(int sig);
+void sigchld_handler(int sig);  // We could loop through the jobs and check if they've exited...
 void sigtstp_handler(int sig);
 void sigint_handler(int sig);
 
@@ -170,30 +171,55 @@ void eval(char *cmdline)
     // Adding a null pointer as the last element of argv 
     argv[argNum] = NULL;
     
-    // Calling builtin_cmd() to check to see if the user has entered 'quit',
-    // the only builtin command at this point.
-    builtin_cmd(argv);
+    /**
+     * Calling builtin_cmd() to check to see if the user has entered a builtin
+     * command.  If so, the command will be executed within the function.
+     */
+    
+    if (!builtin_cmd(argv)) {
 
-    int pid;
-    int status;
+        int pid;
+        int status;
+        int isbg;
 
-    pid = fork();
+        // Checking to see if the last argument is an & and setting isfg accordingly.
+        if (argv[argNum - 1] == "&")
+            isbg = WNOHANG;
+        else isbg = 0;
 
-    // Parent process code
-    if (pid > 0) {
-        wait(&status);
+        // Blocking SIGCHLD with sigprocmask().
+        sigset_t s;
+        sigemptyset(&s);
+        sigaddset(&s, SIGCHLD);
+        sigprocmask(SIG_BLOCK, &s, NULL);
 
-        // Deallocating the argv data structure, but still utilizing the
-    // argNum variable in a for loop, rather than a while(argv[somePointer])
-    // loop.
-        for (i=0; i<argNum; i++) {
-            free(argv[argNum]);
+        pid = fork();
+
+        // TODO - Add the new process to the job list with addjob().
+        
+
+        
+        // Unblocking SIGCHLD.
+        sigprocmask(SIG_UNBLOCK, &s, NULL);
+
+        // Parent process code
+        if (pid > 0) {
+            waitpid(pid, &status, isbg);
+
+            // Deallocating the argv data structure, but still utilizing the
+        // argNum variable in a for loop, rather than a while(argv[somePointer])
+        // loop.
+            for (i=0; i<argNum; i++) {
+                free(argv[argNum]);
+            }
+            free(argv);
         }
-        free(argv);
-    }
 
-    // Child process code.  Exits the forked process if execv fails.
-    else if (execv(argv[0], &argv[0])) exit(2);
+        // Child process code.  Exits the forked process if execv fails.
+        else if (execv(argv[0], &argv[0])) exit(2);
+
+    }
+    
 
 }
 
@@ -209,7 +235,17 @@ int builtin_cmd(char **argv)
     if (!strcmp(argv[0], "quit")) {
         kill(getpid(), SIGQUIT);
     return 1;
+
     }
+    else if (strcmp(argv[0], "fg") == 0 || strcmp(argv[0], "bg") == 0) {
+        do_bgfg(argv);
+        return 1;
+    }
+
+    else if (!strcmp(argv[0], "jobs")) {
+        return 1;
+    }
+
     else return 0;     /* not a builtin command */
 }
 
@@ -218,6 +254,8 @@ int builtin_cmd(char **argv)
  */
 void do_bgfg(char **argv) 
 {
+    // Determine whether the command to execute is fg or bg.
+
     return;
 }
 
@@ -252,7 +290,12 @@ void sigchld_handler(int sig)
  */
 void sigint_handler(int sig) 
 {
-    return;
+    int i;
+
+    for (i = 0; jobs[i].state != "FG" && i <= maxjid(&jobs); i++);
+    if (jobs[i].state != "FG") {
+        kill(-(jobs[i].pid), sig);
+    }    
 }
 
 /*

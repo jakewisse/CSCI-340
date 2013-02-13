@@ -1,8 +1,13 @@
 /* 
- * tsh - A tiny shell program with job control
+ * psh - A prototype tiny shell program with job control
  * 
- * <Put your name and login ID here>
+ * Jake Wisse <jacob.wisse@stono.cs.cofc.edu>
+ * SID: 20030939
+ * CSCI 340
+ * 4 February 2013
+ * 
  */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -13,15 +18,13 @@
 #include <sys/wait.h>
 #include <errno.h>
 #include "util.h"
-#include "jobs.h"
 
 
 /* Global variables */
 int verbose = 0;            /* if true, print additional output */
 
 extern char **environ;      /* defined in libc */
-static char prompt[] = "tsh> ";    /* command line prompt (DO NOT CHANGE) */
-static struct job_t jobs[MAXJOBS]; /* The job list */
+static char prompt[] = "psh> ";    /* command line prompt (DO NOT CHANGE) */
 /* End global variables */
 
 
@@ -30,12 +33,6 @@ static struct job_t jobs[MAXJOBS]; /* The job list */
 /* Here are the functions that you will implement */
 void eval(char *cmdline);
 int builtin_cmd(char **argv);
-void do_bgfg(char **argv);
-void waitfg(pid_t pid);
-
-void sigchld_handler(int sig);
-void sigtstp_handler(int sig);
-void sigint_handler(int sig);
 
 /* Here are helper routines that we've provided for you */
 void usage(void);
@@ -73,18 +70,9 @@ int main(int argc, char **argv)
 	}
     }
 
-    /* Install the signal handlers */
-
-    /* These are the ones you will need to implement */
-    Signal(SIGINT,  sigint_handler);   /* ctrl-c */
-    Signal(SIGTSTP, sigtstp_handler);  /* ctrl-z */
-    Signal(SIGCHLD, sigchld_handler);  /* Terminated or stopped child */
 
     /* This one provides a clean way to kill the shell */
     Signal(SIGQUIT, sigquit_handler); 
-
-    /* Initialize the job list */
-    initjobs(jobs);
 
     /* Execute the shell's read/eval loop */
     while (1) {
@@ -121,8 +109,10 @@ int main(int argc, char **argv)
  * background children don't receive SIGINT (SIGTSTP) from the kernel
  * when we type ctrl-c (ctrl-z) at the keyboard.  
 */
+
 void eval(char *cmdline) 
 {
+
     /**
      * Parse the command line into a two dim. array,
      * delimited by spaces.
@@ -184,8 +174,8 @@ void eval(char *cmdline)
         wait(&status);
 
         // Deallocating the argv data structure, but still utilizing the
-    // argNum variable in a for loop, rather than a while(argv[somePointer])
-    // loop.
+	// argNum variable in a for loop, rather than a while(argv[somePointer])
+	// loop.
         for (i=0; i<argNum; i++) {
             free(argv[argNum]);
         }
@@ -194,80 +184,30 @@ void eval(char *cmdline)
 
     // Child process code.  Exits the forked process if execv fails.
     else if (execv(argv[0], &argv[0])) exit(2);
-
 }
 
 
 /* 
  * builtin_cmd - If the user has typed a built-in command then execute
- *    it immediately.  
+ *    it immediately. 
  * Return 1 if a builtin command was executed; return 0
  * if the argument passed in is *not* a builtin command.
  */
+
+/**
+ * Note: argument was **argv, changed to just a one dim. array
+ */
+
 int builtin_cmd(char **argv) 
 {
     if (!strcmp(argv[0], "quit")) {
         kill(getpid(), SIGQUIT);
-    return 1;
+	return 1;
     }
     else return 0;     /* not a builtin command */
 }
 
-/* 
- * do_bgfg - Execute the builtin bg and fg commands
- */
-void do_bgfg(char **argv) 
-{
-    return;
-}
 
-/* 
- * waitfg - Block until process pid is no longer the foreground process
- */
-void waitfg(pid_t pid)
-{
-    return;
-}
-
-/*****************
- * Signal handlers
- *****************/
-
-/* 
- * sigchld_handler - The kernel sends a SIGCHLD to the shell whenever
- *     a child job terminates (becomes a zombie), or stops because it
- *     received a SIGSTOP or SIGTSTP signal. The handler reaps all
- *     available zombie children, but doesn't wait for any other
- *     currently running children to terminate.  
- */
-void sigchld_handler(int sig) 
-{
-    return;
-}
-
-/* 
- * sigint_handler - The kernel sends a SIGINT to the shell whenver the
- *    user types ctrl-c at the keyboard.  Catch it and send it along
- *    to the foreground job.  
- */
-void sigint_handler(int sig) 
-{
-    return;
-}
-
-/*
- * sigtstp_handler - The kernel sends a SIGTSTP to the shell whenever
- *     the user types ctrl-z at the keyboard. Catch it and suspend the
- *     foreground job by sending it a SIGTSTP.  
- */
-void sigtstp_handler(int sig) 
-{
-    return;
-}
-
-/*********************
- * End signal handlers
- *********************/
 
 
 
