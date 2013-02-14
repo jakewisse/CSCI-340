@@ -180,13 +180,13 @@ void eval(char *cmdline)
 
         int pid;
         int status;
-        int isbg;
+        int isbg;       // 1 if bg, 0 if fg
 
         // Checking to see if the last argument is an & and setting isfg accordingly.
         // In the case that the last arg is an &, the \0 char is freed and the & is
         // replaced with a '\0'.
         if (!strcmp(argv[argNum - 1], "&")) {
-            isbg = WNOHANG;
+            isbg = 1;
             free(argv[argNum]);
             argv[argNum - 1] = '\0';
             argNum--;
@@ -201,17 +201,24 @@ void eval(char *cmdline)
 
         pid = fork();
 
-        // TODO - Add the new process to the job list with addjob().
-        
+        // Adding the new process to the job list with addjob(), only in the parent
+        // process (i.e. the shell).  Also printing the job with new function printjob()
+        // to match rtest04.
+        if (pid > 0 && isbg) {
+            addjob(jobs, pid, BG, cmdline);
+            printjob(jobs, pid);
+        }
 
-        // Unblocking SIGCHLD.
+
+        // Unblocking SIGCHLD, from BOTH parent and child.
         sigprocmask(SIG_UNBLOCK, &s, NULL);
 
         // Parent process code
         if (pid > 0) {
-            waitpid(pid, &status, isbg);
+            if (isbg) waitpid(pid, &status, WNOHANG);
+            else waitpid(pid, &status, 0);
 
-            // Deallocating the argv data structure, but still utilizing the
+        // Deallocating the argv data structure, but still utilizing the
         // argNum variable in a for loop, rather than a while(argv[somePointer])
         // loop.
             for (i=0; i<argNum; i++) {
@@ -225,7 +232,6 @@ void eval(char *cmdline)
 
     }
     
-
 }
 
 
@@ -248,6 +254,7 @@ int builtin_cmd(char **argv)
     }
 
     else if (!strcmp(argv[0], "jobs")) {
+        listjobs(jobs);
         return 1;
     }
 

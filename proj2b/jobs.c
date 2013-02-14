@@ -157,6 +157,24 @@ void listjobs(struct job_t *jobs)
 	}
     }
 }
+
+/**
+ * printjobs - Prints out the job in jobs with the corresponding PID.
+ * @param jobs - The job list.
+ * @param pid  - The pid of the job to print.
+ */
+void printjob(struct job_t *jobs, pid_t pid) {
+
+	int i;
+    
+    for (i = 0; i < MAXJOBS; i++) {
+		if (jobs[i].pid == pid) {
+			printf("[%d] (%d) %s", jobs[i].jid, jobs[i].pid, jobs[i].cmdline);
+			break;
+		}
+    }
+}
+
 /******************************
  * end job list helper routines
  ******************************/
