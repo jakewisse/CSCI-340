@@ -198,7 +198,6 @@ void eval(char *cmdline)
         // TODO - Add the new process to the job list with addjob().
         
 
-        
         // Unblocking SIGCHLD.
         sigprocmask(SIG_UNBLOCK, &s, NULL);
 
@@ -290,12 +289,8 @@ void sigchld_handler(int sig)
  */
 void sigint_handler(int sig) 
 {
-    int i;
-
-    for (i = 0; jobs[i].state != "FG" && i <= maxjid(&jobs); i++);
-    if (jobs[i].state != "FG") {
-        kill(-(jobs[i].pid), sig);
-    }    
+    if (fgpid(&jobs))
+        kill(-(fgpid(&jobs)), sig);   
 }
 
 /*
@@ -305,7 +300,8 @@ void sigint_handler(int sig)
  */
 void sigtstp_handler(int sig) 
 {
-    return;
+    if (fgpid(&jobs))
+        kill(-(fgpid(&jobs)), sig);    
 }
 
 /*********************
