@@ -183,8 +183,14 @@ void eval(char *cmdline)
         int isbg;
 
         // Checking to see if the last argument is an & and setting isfg accordingly.
-        if (argv[argNum - 1] == "&")
+        // In the case that the last arg is an &, the \0 char is freed and the & is
+        // replaced with a '\0'.
+        if (!strcmp(argv[argNum - 1], "&")) {
             isbg = WNOHANG;
+            free(argv[argNum]);
+            argv[argNum - 1] = '\0';
+            argNum--;
+        }
         else isbg = 0;
 
         // Blocking SIGCHLD with sigprocmask().
@@ -289,8 +295,8 @@ void sigchld_handler(int sig)
  */
 void sigint_handler(int sig) 
 {
-    if (fgpid(&jobs))
-        kill(-(fgpid(&jobs)), sig);   
+    if (fgpid(jobs))
+        kill(-(fgpid(jobs)), sig);   
 }
 
 /*
@@ -300,8 +306,8 @@ void sigint_handler(int sig)
  */
 void sigtstp_handler(int sig) 
 {
-    if (fgpid(&jobs))
-        kill(-(fgpid(&jobs)), sig);    
+    if (fgpid(jobs))
+        kill(-(fgpid(jobs)), sig);    
 }
 
 /*********************
