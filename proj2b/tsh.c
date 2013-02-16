@@ -1,7 +1,10 @@
 /* 
  * tsh - A tiny shell program with job control
+ *
+ * Jake Wisse
+ * CSCI 340
+ * SID: 20030939
  * 
- * <Put your name and login ID here>
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -12,6 +15,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <errno.h>
+#include <time.h>       // For nanosleep()
 #include "util.h"
 #include "jobs.h"
 
@@ -179,7 +183,6 @@ void eval(char *cmdline)
     if (!builtin_cmd(argv)) {
 
         int pid;
-        int status;
         int isbg;       // 1 if bg, 0 if fg
 
         // Checking to see if the last argument is an & and setting isfg accordingly.
@@ -201,34 +204,44 @@ void eval(char *cmdline)
 
         pid = fork();
 
-        // Adding the new process to the job list with addjob(), only in the parent
-        // process (i.e. the shell).  Also printing the job with new function printjob()
-        // to match rtest04.
-        if (pid > 0 && isbg) {
-            addjob(jobs, pid, BG, cmdline);
-            printjob(jobs, pid);
+        // Adding the new bg process to the job list with addjob(), only in the parent
+        // process (i.e. the shell).  Also printing the job to match rtest04.
+        if (pid > 0) {
+            if (isbg) {
+                addjob(jobs, pid, BG, cmdline);
+                printjob(jobs, pid);
+            }
+            else {
+            addjob(jobs, pid, FG, cmdline);
+
+            }
         }
 
 
         // Unblocking SIGCHLD, from BOTH parent and child.
         sigprocmask(SIG_UNBLOCK, &s, NULL);
 
-        // Parent process code
+        // Parent (shell) process code
         if (pid > 0) {
-            if (isbg) waitpid(pid, &status, WNOHANG);
-            else waitpid(pid, &status, 0);
+            if (!isbg) waitfg(pid);
 
-        // Deallocating the argv data structure, but still utilizing the
-        // argNum variable in a for loop, rather than a while(argv[somePointer])
-        // loop.
+            // Deallocating the argv data structure for the previously executed
             for (i=0; i<argNum; i++) {
                 free(argv[argNum]);
             }
             free(argv);
         }
 
-        // Child process code.  Exits the forked process if execv fails.
-        else if (execv(argv[0], &argv[0])) exit(2);
+        // Child process code.
+        else {
+            setpgid(0, 0);
+
+            if (execv(argv[0], &argv[0])) {
+                printf("%.*s: Command not found\n", (int)strlen(cmdline) - 1, cmdline);
+                exit(2);
+            }
+        }
+
 
     }
     
@@ -266,17 +279,48 @@ int builtin_cmd(char **argv)
  */
 void do_bgfg(char **argv) 
 {
-    // Determine whether the command to execute is fg or bg.
+    struct job_t *j;
+    // Do fg
+    if (strcmp(argv[0], "fg") == 0) {
+        if (argv[1][0] == '%') {
+            j = getjobjid(jobs, atoi(argv[1] + 1 * sizeof(char)));
+            if (j != NULL) {
+                printf("Sending SIGCONT to job #%d\n", j->jid);
+                kill(j->pid, SIGCONT);
+            }
+        }
 
-    return;
+        else {
+            j = getjobpid(jobs, atoi(argv[1]));
+            if (j != NULL) {
+                printf("Sending SIGCONT to pid #%d\n", j->pid);
+                kill(j->pid, SIGCONT);
+            }
+        }
+    }
+
+    if (strcmp(argv[0], "bg") == 0) {
+        if (argv[1][0] == '%') {
+            j = getjobjid(jobs, atoi(argv[1] + 1 * sizeof(char)));
+            
+        }
+    }
 }
 
 /* 
- * waitfg - Block until process pid is no longer the foreground process
+ * waitfg - Block until process pid is no longer the foreground process.
+ *
+ * Uses a busy loop with nanosleep
  */
 void waitfg(pid_t pid)
 {
-    return;
+    struct timespec req, rem;
+    req.tv_nsec = 10000;
+    req.tv_sec = 0;
+
+    while(kill(pid, 0) == 0) {
+        nanosleep(&req, &rem);
+    }
 }
 
 /*****************
@@ -292,18 +336,44 @@ void waitfg(pid_t pid)
  */
 void sigchld_handler(int sig) 
 {
-    return;
+    int status;
+    pid_t pid;
+
+    if ((pid = waitpid(-1, &status, WNOHANG | WUNTRACED)) > 0) {
+
+        // Child terminated normally.
+        if (WIFEXITED(status)) {
+            deletejob(jobs, pid);
+        }
+
+        // Child received a SIGINT (ctrl+c).
+        else if (WIFSIGNALED(status)) { 
+            printf("Job [%d] (%d) terminated by signal 2\n", getjobpid(jobs, pid)->jid, pid);
+            deletejob(jobs, pid);
+
+        }
+
+        // Child received a SIGSTP (ctrl+z).
+        else if (WIFSTOPPED(status)) {
+            printf("Job [%d] (%d) stopped by signal 20\n", getjobpid(jobs, pid)->jid, pid);            
+            getjobpid(jobs, pid)->state = ST;
+        }
+
+    }
+
 }
 
 /* 
- * sigint_handler - The kernel sends a SIGINT to the shell whenver the
+ * sigint_handler - The kernel sends a SIGINT to the shell whenever the
  *    user types ctrl-c at the keyboard.  Catch it and send it along
  *    to the foreground job.  
  */
 void sigint_handler(int sig) 
 {
-    if (fgpid(jobs))
-        kill(-(fgpid(jobs)), sig);   
+    pid_t pid;
+    if ((pid = fgpid(jobs))) {
+        kill(-pid, sig);    
+    }
 }
 
 /*
@@ -313,8 +383,10 @@ void sigint_handler(int sig)
  */
 void sigtstp_handler(int sig) 
 {
-    if (fgpid(jobs))
+    if (fgpid(jobs)) {
+        printf("About to stop the job...\n");
         kill(-(fgpid(jobs)), sig);    
+    }
 }
 
 /*********************
@@ -345,7 +417,19 @@ void usage(void)
  */
 void sigquit_handler(int sig) 
 {
+/*  
+    This message doesn't appear in the reference test so it is
+    commented out.
+
     printf("Terminating after receipt of SIGQUIT signal\n");
+*/
+    int i;
+    i = 0;
+    while (jobs[i].pid != 0) {
+        kill(jobs[i].pid, 15);
+        i++;
+    }
+
     exit(1);
 }
 
