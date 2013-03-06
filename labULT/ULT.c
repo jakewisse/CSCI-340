@@ -11,8 +11,7 @@
 
 
 
-Tid 
-ULT_CreateThread(void (*fn)(void *), void *parg)
+Tid ULT_CreateThread(void (*fn)(void *), void *parg)
 {
   assert(0); /* TBD */
   return ULT_FAILED;
