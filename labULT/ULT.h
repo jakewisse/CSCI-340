@@ -7,9 +7,14 @@ typedef int Tid;
 #define ULT_MIN_STACK 32768
 
 
+/**
+ * The ThrdCtlBlk contains only an array of pointers to ucontext_t's, representing each thread's
+ * context.  <<decribe the how this structure is manipulated>>
+ */
+typedef struct ThrdCtlBlk
+{
+	ucontext_t* contextArray[ULT_MAX_THREADS];
 
-typedef struct ThrdCtlBlk{
-  /* ... Fill this in ... */
 } ThrdCtlBlk;
 
 
