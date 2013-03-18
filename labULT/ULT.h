@@ -1,19 +1,17 @@
 #ifndef _ULT_H_
 #define _ULT_H_
 #include <ucontext.h>
+#include "interrupt.h"
 
 typedef int Tid;
 #define ULT_MAX_THREADS 1024
 #define ULT_MIN_STACK 32768
 
 
-/**
- * The ThrdCtlBlk contains only an array of pointers to ucontext_t's, representing each thread's
- * context.  <<decribe the how this structure is manipulated>>
- */
 typedef struct ThrdCtlBlk
 {
-	ucontext_t* contextArray[ULT_MAX_THREADS];
+	Tid tid;
+	ucontext_t* ucp;
 
 } ThrdCtlBlk;
 
@@ -41,6 +39,8 @@ Tid ULT_CreateThread(void (*fn)(void *), void *parg);
 Tid ULT_Yield(Tid tid);
 Tid ULT_DestroyThread(Tid tid);
 
+int enqueue(ThrdCtlBlk** queue, ThrdCtlBlk* tcb);
+ThrdCtlBlk* dequeue(ThrdCtlBlk** queue);
 
  
 

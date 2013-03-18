@@ -52,7 +52,6 @@ void basicThreadTests()
   ret = ULT_Yield(16);
   assert(ret == ULT_INVALID);
   printf("Initial thread returns from Yield(INVALID2)\n");
-  
   /*
    * Create a thread
    */
