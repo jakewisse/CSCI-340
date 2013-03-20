@@ -39,8 +39,12 @@ Tid ULT_CreateThread(void (*fn)(void *), void *parg);
 Tid ULT_Yield(Tid tid);
 Tid ULT_DestroyThread(Tid tid);
 
+void Stub(void (*fn)(void *), void *arg);
+
+// Helper functions
 int enqueue(ThrdCtlBlk** queue, ThrdCtlBlk* tcb);
-ThrdCtlBlk* dequeue(ThrdCtlBlk** queue);
+ThrdCtlBlk* dequeue(ThrdCtlBlk** queue, Tid tid);
+Tid findTid();
 
  
 
