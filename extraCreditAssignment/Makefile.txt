@@ -1,0 +1,24 @@
+CC=gcc
+CFLAGS=-Wall
+LDFLAGS=-lpthread
+
+all:	dining_philosophers_mutex dining_philosophers_cond
+
+
+dining_philosophers_mutex: dining_philosophers_mutex.o
+			  $(CC) $(CFLAGS) -o dining_philosophers_mutex \
+				dining_philosophers_mutex.o $(LDFLAGS)
+
+dining_philosophers_cond: dining_philosophers_cond.o
+			  $(CC) $(CFLAGS) -o dining_philosophers_cond \
+				dining_philosophers_cond.o $(LDFLAGS)
+
+dining_philosophers_mutex.o: dining_philosophers_mutex.c
+			  $(CC) -c $(CFLAGS) dining_philosophers_mutex.c
+
+dining_philosophers_cond.o: dining_philosophers_cond.c
+			  $(CC) -c $(CFLAGS) dining_philosophers_cond.c
+
+clean:
+	rm -f  dining_philosophers_mutex dining_philosophers_cond \
+	       dining_philosophers_mutex.o dining_philosophers_cond.o *~

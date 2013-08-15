@@ -11,14 +11,13 @@ int
 main(int argc, char **argv)
 {
   basicThreadTests();
-  return 0;
-
-  /*grandFinale();
+  
+  grandFinale();
 
   printf("\n\n*** BUG **** Should not get here\n\n");
   assert(0);
 
-  return(0);*/
+  return(0);
 }
 
 

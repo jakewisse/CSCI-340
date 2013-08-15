@@ -90,6 +90,8 @@ void basicThreadTests()
     assert(ret == children[ii]);
   }
 
+
+
   /*
    * Create maxthreads-1 threads
    */
@@ -116,12 +118,13 @@ void basicThreadTests()
        * stub schedules  on exit.
        */
       assert(ULT_isOKRet(ret));
-    }
-  }
+   }
+ }
   /*
    * They should have cleaned themselves up when
    * they finished running. Create maxthreads-1 threads.
    */
+  
   printf("Creating %d threads\n", ULT_MAX_THREADS-1);
   for(ii = 0; ii < ULT_MAX_THREADS-1; ii++){
     ret = ULT_CreateThread((void (*)(void *))fact, (void *)10);
@@ -130,7 +133,7 @@ void basicThreadTests()
   /*
    * Now destroy some explicitly and let the others run
    */
-  printf("Destorying %d threads, running the rest\n",
+  printf("Destroying %d threads, running the rest\n",
          ULT_MAX_THREADS/2);
   for(ii = 0; ii < ULT_MAX_THREADS; ii+=2){
     ret = ULT_DestroyThread(ULT_ANY);
@@ -144,7 +147,7 @@ void basicThreadTests()
   assert(ret == ULT_NONE);
   ret = ULT_DestroyThread(42);
   assert(ret == ULT_INVALID);
-  ret = ULT_DestroyThread(-42);
+  ret = ULT_DestroyThread(-42); 
   assert(ret == ULT_INVALID);
   ret = ULT_DestroyThread(ULT_MAX_THREADS + 1000);
   assert(ret == ULT_INVALID);
